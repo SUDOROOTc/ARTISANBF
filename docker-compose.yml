@@ -1,0 +1,24 @@
+services:
+  web:
+    build: .
+    container_name: artisanBF
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      # Le code source est monté en live -> les modifs sur ta machine
+      # sont visibles immédiatement dans le container (pas besoin de rebuild à chaque changement)
+      - .:/app
+      # Volume nommé séparé pour la base SQLite -> garantit la persistance
+      # même si le container est supprimé/recréé
+      - sqlite_data:/app/db
+      # Volume pour les photos uploadées (1 à 3 photos par commerce)
+      - media_data:/app/media
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+
+volumes:
+  sqlite_data:
+  media_data:
