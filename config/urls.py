@@ -1,22 +1,27 @@
 """
-URL configuration for config project.
+Configuration des URLs principales du projet.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.1/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+Préfixes :
+- /admin/ → Interface d'administration Django
+- /api/ → API REST de l'application Artisan BF
+- /media/ → Fichiers uploadés (photos) en développement
 """
+
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
+    # Interface d'administration Django
     path('admin/', admin.site.urls),
+
+    # API REST de l'application artisans
+    # Tous les endpoints commencent par /api/
+    path('api/', include('artisans.urls')),
 ]
+
+# En mode développement, on sert les fichiers média (photos) directement
+# via Django. En production, on utiliserait un vrai serveur (Nginx, etc.)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

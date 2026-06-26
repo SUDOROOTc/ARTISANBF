@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Charge les variables du fichier .env dans les variables d'environnement
+# os.getenv() pourra alors les lire
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-a6wqba1-68_3!p@e1)f3-_fd9wnhbwdufn@q=(-vmkajl_i_g#'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-a6wqba1-68_3!p@e1)f3-_fd9wnhbwdufn@q=(-vmkajl_i_g#')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -37,10 +43,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Applications tierces
+    'rest_framework',          # Django REST Framework : crée des API REST facilement
+    'rest_framework.authtoken',# Gère les tokens d'authentification pour l'API
+    'corsheaders',             # Permet au frontend (React/Flutter) d'appeler l'API depuis un autre domaine
+    # Notre application métier
+    'artisans',                # Gère commerces, catégories, utilisateurs, etc.
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # Doit être en haut pour gérer CORS avant tout
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,7 +89,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'artisanbf.db',
     }
 }
 
@@ -103,9 +116,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr-fr'  # On passe en français pour le Burkina Faso
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Ouagadougou'  # Fuseau horaire du Burkina Faso
 
 USE_I18N = True
 
@@ -121,3 +134,70 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# ─── Configuration des fichiers média (photos uploadées) ───
+# MEDIA_ROOT : dossier où seront stockées les photos sur le disque
+# MEDIA_URL : URL de base pour accéder aux photos via le navigateur
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+
+# ─── Configuration de l'authentification ───
+# On dit à Django d'utiliser notre modèle User personnalisé (qu'on va créer)
+# au lieu du User par défaut, pour pouvoir ajouter un champ téléphone
+AUTH_USER_MODEL = 'artisans.User'
+
+
+# ─── Configuration Django REST Framework ───
+REST_FRAMEWORK = {
+    # Définit le type d'authentification utilisé par défaut
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        # Les clients doivent envoyer un token dans l'en-tête HTTP
+        # Exemple : Authorization: Token abc123...
+        'rest_framework.authentication.TokenAuthentication',
+        # Permet aussi l'authentification via session (pour l'admin Django)
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    # Définit les permissions par défaut
+    'DEFAULT_PERMISSION_CLASSES': [
+        # Par défaut, les endpoints exigent d'être authentifié
+        # On pourra assouplir ça individuellment pour la recherche publique
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    # Pagination : quand on liste des commerces, on reçoit 20 par page
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    # Format de date qu'on utilise dans l'API
+    'DATETIME_FORMAT': '%Y-%m-%d %H:%M:%S',
+}
+
+
+# ─── Configuration CORS (Cross-Origin Resource Sharing) ───
+# Lit les origines autorisées depuis le .env (ex: http://localhost:3000 pour React)
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost:8000').split(',')
+
+# Permet aussi les requêtes depuis n'importe quelle origine en développement
+# (utile pour Flutter qui tourne sur un émulateur avec une adresse différente)
+CORS_ALLOW_ALL_ORIGINS = True
+
+# Autorise l'envoi des cookies dans les requêtes cross-origin (pour les sessions)
+CORS_ALLOW_CREDENTIALS = True
+
+
+# ─── Configuration email (pour la réinitialisation de mot de passe) ───
+# Pour le hackathon/MVP, on utilise la console : les emails sont affichés
+# dans le terminal au lieu d'être vraiment envoyés
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# En production, on remplacerait par :
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+
+
+# ─── Clé API OpenRouter (pour la notation IA des commentaires) ───
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
+OPENROUTER_MODEL = os.getenv('OPENROUTER_MODEL', 'meta-llama/llama-3.1-8b-instruct:free')
